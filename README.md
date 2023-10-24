@@ -26,3 +26,6 @@ cmake -DINSTALL_CONDB=ON -DCMAKE_INSTALL_PREFIX=../run ../calypso
 make -j8
 make install
 ```
+
+
+For Millepede-II installation see [here](https://www.desy.de/~kleinwrt/MP2/doc/html/index.html). 
