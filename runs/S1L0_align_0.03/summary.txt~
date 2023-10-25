@@ -1,0 +1,4 @@
+Initial misalignment: "10": [0, 0.3, 0, 0, 0, 0], "11": [0, 0, 0, 0, 0, 0], "12": [0, 0, 0, 0, 0, 0], "20": [0, 0, 0, 0, 0, 0], "21": [0, 0, 0, 0, 0, 0], "22": [0, 0, 0, 0, 0, 0], "30": [0, 0, 0, 0, 0, 0], "31": [0, 0, 0, 0, 0, 0], "32": [0, 0, 0, 0, 0, 0]
+Number of iteration ran: 4
+Alignment parameter: Only layer alignment, X, Y, Rx, Ry, Rz. 
+Summary: Residual shape look to get better, but not aligned properly as the local x residual not centered at zero. Also input misalignments not recovered. 
