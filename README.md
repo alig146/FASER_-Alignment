@@ -3,7 +3,7 @@ This Repository contains the scripts needed to run FASER tracker alignment.
 
 Get Calypso:
 ```
-git clone –recursive https://gitlab.cern.ch/faser/calypso.git (or from your fork)  
+git clone --recursive https://gitlab.cern.ch/faser/calypso.git (or from your fork)  
 git remote add [name1] https://gitlab.cern.ch/keli/calypso.git
 git fetch [name1]
 git checkout -b [name2] [name1]/globalalign
