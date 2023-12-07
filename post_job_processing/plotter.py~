@@ -1,0 +1,221 @@
+import uproot 
+import numpy as np
+import matplotlib.pyplot as plt
+import awkward as ak
+from lmfit.models import GaussianModel
+from math import sqrt
+import ROOT
+from array import array
+from matplotlib.backends.backend_pdf import PdfPages
+
+
+
+
+def ReadBranches(f, branch):
+    tree = f['trackParam']
+    ts = tree.arrays(branch, library='ak')  
+    return ts
+
+
+reg_branches= ['fitParam_chi2',
+               'fitParam_nMeasurements',
+               'fitParam_align_id',
+               'fitParam_align_local_residual_x',
+               'tracker_local_clus_residual_x',
+               'tracker_local_sPoint_residual_x',
+               'tracker_local_sPoint_residual_y']
+
+branches=[
+  "fitParam_chi2",
+  "fitParam_nMeasurements",
+  "fitParam_align_ift_id",
+  "fitParam_align_ift_local_residual_x", 
+  "fitParam_align_ift_local_residual_y", 
+  "fitParam_align_ift_local_derivation_x_x",
+  "fitParam_align_ift_local_derivation_x_y",
+  "fitParam_align_ift_local_derivation_x_z",
+  "fitParam_align_ift_local_derivation_x_rx", 
+  "fitParam_align_ift_local_derivation_x_ry", 
+  "fitParam_align_ift_local_derivation_x_rz", 
+  "fitParam_align_ift_local_derivation_y_x",
+  "fitParam_align_ift_local_derivation_y_y",
+  "fitParam_align_ift_local_derivation_y_z",
+  "fitParam_align_ift_local_derivation_y_rx", 
+  "fitParam_align_ift_local_derivation_y_ry", 
+  "fitParam_align_ift_local_derivation_y_rz", 
+  "fitParam_align_ift_global_derivation_x_x", 
+  "fitParam_align_ift_global_derivation_x_y", 
+  "fitParam_align_ift_global_derivation_x_z", 
+  "fitParam_align_ift_global_derivation_x_rx",
+  "fitParam_align_ift_global_derivation_x_ry",
+  "fitParam_align_ift_global_derivation_x_rz",
+  "fitParam_align_ift_global_derivation_y_x", 
+  "fitParam_align_ift_global_derivation_y_y", 
+  "fitParam_align_ift_global_derivation_y_z", 
+  "fitParam_align_ift_global_derivation_y_rx",
+  "fitParam_align_ift_global_derivation_y_ry",
+  "fitParam_align_ift_global_derivation_y_rz",
+  "fitParam_align_ift_local_derivation_x_par_x", 
+  "fitParam_align_ift_local_derivation_x_par_y", 
+  "fitParam_align_ift_local_derivation_x_par_theta",
+  "fitParam_align_ift_local_derivation_x_par_phi", 
+  "fitParam_align_ift_local_derivation_x_par_qop", 
+  "fitParam_align_ift_local_derivation_y_par_x", 
+  "fitParam_align_ift_local_derivation_y_par_y", 
+  "fitParam_align_ift_local_derivation_y_par_theta",
+  "fitParam_align_ift_local_derivation_y_par_phi", 
+  "fitParam_align_ift_local_derivation_y_par_qop",
+  "fitParam_align_ift_global_measured_x",
+  "fitParam_align_ift_global_measured_y"]
+
+# def make_profile_plot(x_data, y_data):
+#     x_data = array('d', x_data)
+#     y_data = array('d', y_data)
+#     # Create a TProfile histogram
+#     myProfile = ROOT.TProfile("myProfile", "My Profile Histogram", 100, np.floor(np.min(y_data)), np.floor(np.max(y_data)))
+#     # myProfile = ROOT.TProfile("myProfile", "My Profile Histogram", 100, -60, 60)
+#     # Fill the TProfile histogram with data
+#     for i in range(len(y_data)):
+#         myProfile.Fill(y_data[i], x_data[i])
+#     return myProfile
+
+def prof_plotter(data, x_data, y_data, Station, Layer):
+    id = ak.flatten(data['fitParam_align_ift_id'])
+    station=(id//1000)%10
+    layer=(id//100)%10
+
+    if y_data == 'fitParam_align_ift_local_residual_x':
+        cut = ak.where((abs(ak.flatten(data[y_data])) < 1) & (station==Station) & (layer==Layer))
+    else:
+        cut = ak.where((abs(ak.flatten(data[y_data])) < 5) & (station==Station) & (layer==Layer))
+
+    X_data = ak.flatten(data[x_data])[cut]
+    Y_data = ak.flatten(data[y_data])[cut]
+    X_data = array('d', X_data)
+    Y_data = array('d', Y_data)
+
+    # make title of the plot station and layer arguments
+    title = 'station'+str(Station)+'_layer'+str(Layer)
+    myProfile = ROOT.TProfile("Profile", title, 40, np.floor(np.min(X_data)), np.floor(np.max(X_data)))
+    for i in range(len(X_data)):
+        myProfile.Fill(X_data[i], Y_data[i])
+    return myProfile
+
+
+def cut(data, Station, Layer, mod, draw_mod=False, param='fitParam_align_local_residual_x'):
+    cut = ak.where((data['fitParam_chi2'] < 200)&(data['fitParam_nMeasurements'] > 6))
+    res_x = ak.flatten(data[param])[cut]
+    # id = ak.flatten(data['fitParam_align_id'])[cut] ########################################
+    id = ak.flatten(data['fitParam_align_ift_id'])[cut] ########################################
+    station=(id//1000)%10
+    layer=(id//100)%10
+    module=(id//10)%10
+    if draw_mod:
+        return res_x[ak.where((station==Station)&(layer==Layer)&(module==mod))]
+    else:
+        return res_x[ak.where((station==Station)&(layer==Layer))]
+
+def gaussfun(data):
+    bin=np.linspace(-0.1, 0.1, 26)
+    npix = len(data)
+    nbins = int(sqrt(npix))
+    #data = np.random.standard_normal(npix)
+    n, bins = np.histogram(data, bins=nbins, density=True)
+    n, bins = np.array(n), np.array(bins)
+
+    # Generate data from bins as a set of points 
+    bin_size = abs(bins[1]-bins[0])
+    x =np.linspace(start=bins[0]+bin_size/2.0,stop=bins[-2]+bin_size/2.0, num=nbins,endpoint=True)
+    y = n
+
+    model = GaussianModel()
+    params = model.guess(y, x=x)
+    result = model.fit(y, params, x=x)
+    return bin, x, result
+
+def getmusig(result):
+    i = 0
+    for name, param in result.params.items():
+        i += 1
+        if i == 2:
+            mu_tmp=round(param.value, 5)
+            mu_err_tmp=round(param.stderr, 5)
+        elif i == 3:
+            std_tmp=round(param.value, 5)
+            std_err_tmp=round(param.stderr, 5)
+    return mu_tmp, mu_err_tmp, std_tmp, std_err_tmp
+
+
+def plot(TS, station, layer, mod, label, draw_mod=False, param='fitParam_align_local_residual_x', range=0.1):
+    # Generate data from random Guassian distribution
+    data = cut(TS, station, layer, mod, draw_mod, param)
+    data = data[ak.where((data>-range)&(data<range))]
+    bin=np.linspace(-range, range, 60)
+    # bin, x, result = gaussfun(data)
+    # mu, mu_err, std, std_err = getmusig(result)
+    plt.xlabel(param+'(mm)', fontsize=20)
+    plt.hist(data, bins=bin, histtype='step', linewidth=0.5, density=True, alpha=0.9, label=f'µ: {round(np.mean(data), 5)}, σ: {round(np.std(data), 5)}')
+    # plt.plot(x, result.best_fit, linewidth=2, label=f'{label} µ: {mu}±{mu_err}, σ:{std}±{std_err}')    
+    plt.ylabel('Number of Events (normalized)', fontsize=20)
+    plt.xticks(fontsize=16)
+    plt.legend(fontsize=15)
+    # plt.xlim(-0.06, 0.06)
+    if draw_mod == False:
+        plt.title(f'sta{station},layer{layer}', fontsize=25)
+    else:
+        plt.title(f'sta{station},layer{layer},mod{mod}', fontsize=25)
+
+f0 = uproot.open('/data/agarabag/a_c/run/mc_no_misalgn/kfalignment_mc.root')
+data = ReadBranches(f0, branches)
+
+p = PdfPages("mc_test_perfect_geom.pdf") 
+out_name = "mc_test_perfect_geom_profile.pdf"
+
+
+for sta in range(1):
+    for lay in range(3):
+        mod=0
+        fig = plt.figure(figsize=(20, 10))
+        plt.subplot(1, 2, 1)
+        plot(data, sta, lay, mod, 'before alignment', draw_mod=False, param='fitParam_align_ift_local_residual_x', range=1)
+        plt.subplot(1, 2, 2)
+        plot(data, sta, lay, mod, 'before alignment', draw_mod=False, param='fitParam_align_ift_local_residual_y', range=5)
+        p.savefig(fig)
+        plt.close(fig)
+
+for sta in range(1):
+    for lay in range(3):
+        for mod in range(0, 8):
+            fig = plt.figure(figsize=(20, 10))
+            plt.subplot(1, 2, 1)
+            plot(data, sta, lay, mod, 'before alignment', draw_mod=True, param='fitParam_align_ift_local_residual_x', range=1)
+            plt.subplot(1, 2, 2)
+            plot(data, sta, lay, mod, 'before alignment', draw_mod=True, param='fitParam_align_ift_local_residual_y', range=5)
+            p.savefig(fig)
+            plt.close(fig)
+
+p.close()
+
+####profile plots
+# ROOT.gStyle.SetOptStat(0)
+# ROOT.gROOT.SetBatch(True)
+canvas = ROOT.TCanvas("canvas", "eff_plots", 800, 500)
+canvas.cd()
+canvas.Print(out_name+"[")
+
+for x_data in ['fitParam_align_ift_global_measured_x', 'fitParam_align_ift_global_measured_y']:
+    for y_data in ['fitParam_align_ift_local_residual_x', 'fitParam_align_ift_local_residual_y']:
+        for sta in range(1):
+            for lay in range(3):
+                prof = prof_plotter(data, x_data, y_data, sta, lay)
+                prof.Draw()
+                prof.GetXaxis().SetTitle(x_data)
+                prof.GetYaxis().SetTitle(y_data)
+                canvas.Print(out_name)
+                canvas.Clear()
+
+canvas.Print(out_name+"]")
+#################
+
+
+
